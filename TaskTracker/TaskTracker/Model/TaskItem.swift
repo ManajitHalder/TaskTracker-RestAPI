@@ -6,18 +6,18 @@
 
 import Foundation
 
-struct Update: Identifiable, Hashable {
+struct Update: Identifiable, Hashable, Codable {
     var id = UUID().uuidString
     var text: String
 }
 
-struct TaskDate: Hashable {
+struct TaskDate: Hashable, Codable {
     var startDate: String = ""
     var dueDate: String = ""
     var finishDate: String = ""
 }
 
-struct TaskItem: Identifiable, Hashable {
+struct TaskItem: Identifiable, Hashable, Codable {
     var id = UUID().uuidString
     var title: String = ""
     var description: String = ""
