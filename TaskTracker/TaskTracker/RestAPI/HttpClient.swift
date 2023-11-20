@@ -60,18 +60,43 @@ class HttpClient {
     }
     
     // POST
-    func postData() {
+    func postData(object: TaskItem) async throws {
+        var request = try await URLRequest(url: getTaskUrl())
+        request.httpMethod = HttpMethod.POST.rawValue
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(object)
         
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw HttpError.BadResponse
+        }
     }
     
     // UPDATE (PUT)
-    func putData() {
+    func putData(object: TaskItem) async throws {
+        var request = try await URLRequest(url: getTaskUrl())
+        request.httpMethod = HttpMethod.PUT.rawValue
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(object)
         
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw HttpError.BadResponse
+        }
     }
     
     // DELETE
-    func deleteData() {
+    func deleteData(at id: String) async throws {
+        var request = try await URLRequest(url: getTaskUrl())
+        request.httpMethod = HttpMethod.DELETE.rawValue
+
+        let (_, response) = try await URLSession.shared.data(for: request)
         
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw HttpError.BadResponse
+        }
     }
 }
 
