@@ -10,6 +10,7 @@ enum HttpMethod: String {
     case GET
     case POST
     case PUT
+    case PATCH
     case DELETE
 }
 
@@ -32,6 +33,15 @@ class HttpClient {
     private init() {}
     static let shared = HttpClient()
     
+    var taskURL: URL {
+        get async throws {
+            guard let url = URL(string: "https://private-96be530-tasktracker1.apiary-mock.com/v1/tasks") else {
+                throw HttpError.BadURL
+            }
+            return url
+        }
+    }
+    
     func getTaskUrl() async throws -> URL {
         guard let url = URL(string: "https://private-96be530-tasktracker1.apiary-mock.com/v1/tasks") else {
             throw HttpError.BadURL
@@ -45,8 +55,8 @@ class HttpClient {
     }
     
     // GET
-    func getData() async throws -> [TaskItem] {
-        let (data, response) = try await URLSession.shared.data(from: getTaskUrl())
+    func getTaskData() async throws -> [TaskItem] {
+        let (data, response) = try await URLSession.shared.data(from: taskURL)
         
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
             throw HttpError.BadResponse
@@ -60,7 +70,7 @@ class HttpClient {
     }
     
     // POST
-    func postData(object: TaskItem) async throws {
+    func postTaskData(object: TaskItem) async throws {
         var request = try await URLRequest(url: getTaskUrl())
         request.httpMethod = HttpMethod.POST.rawValue
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -74,7 +84,7 @@ class HttpClient {
     }
     
     // UPDATE (PUT)
-    func putData(object: TaskItem) async throws {
+    func putTaskData(object: TaskItem) async throws {
         var request = try await URLRequest(url: getTaskUrl())
         request.httpMethod = HttpMethod.PUT.rawValue
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -87,8 +97,22 @@ class HttpClient {
         }
     }
     
+    // POST, PUT and PATCH TaskItem
+    func sendTaskData(object: TaskItem, httpMethod: HttpMethod) async throws {
+        var request = try await URLRequest(url: getTaskUrl())
+        request.httpMethod = httpMethod.rawValue
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try? JSONEncoder().encode(object)
+        
+        let (_, response) = try await URLSession.shared.data(for: request)
+        
+        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+            throw HttpError.BadResponse
+        }
+    }
+    
     // DELETE
-    func deleteData(at id: String) async throws {
+    func deleteTaskData(at id: String) async throws {
         var request = try await URLRequest(url: getTaskUrl())
         request.httpMethod = HttpMethod.DELETE.rawValue
 
