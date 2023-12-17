@@ -15,15 +15,21 @@ enum HttpMethod: String {
 }
 
 enum HttpError: Error {
-    case BadURL
-    case BadResponse
-    case DecodingError
-    case InvalidURL
+    case BadRequest // HTTP status code 400
+    case UnauthorizedRequest // HTTP status code 401
+    case RequestForbidden // HTTP status code 403
+    case ResourceNotFound // HTTP status code 404
+    case InternalServerError // HTTP status code 500
+    case Unknown // HTTP status code unknown
+}
+
+enum DecoderError: Error {
+    case DecodingError //
 }
 
 func taskUrl() async throws -> URL {
-    guard let url = URL(string: "ss") else {
-        throw HttpError.BadURL
+    guard let url = URL(string: "https://tasktracker.apiblueprint.org/v1/tasks") else {
+        throw HttpError.BadRequest
     }
     
     return url
@@ -36,34 +42,69 @@ class HttpClient {
     var taskURL: URL {
         get async throws {
             guard let url = URL(string: "https://private-96be530-tasktracker1.apiary-mock.com/v1/tasks") else {
-                throw HttpError.BadURL
+                throw HttpError.BadRequest
             }
             return url
         }
     }
     
     func getTaskUrl() async throws -> URL {
-        guard let url = URL(string: "https://private-96be530-tasktracker1.apiary-mock.com/v1/tasks") else {
-            throw HttpError.BadURL
+        guard let url = URL(string: "https://tasktracker.apiblueprint.org/v1/tasks") else {
+            throw HttpError.BadRequest
         }
-        
-//        var taskUrl = URLRequest(url: url)
-//        taskUrl.addValue("application/json", forHTTPHeaderField: "Content-Type")
-//        taskUrl.addValue("application/json", forHTTPHeaderField: "Accept")
         
         return url
     }
     
     // GET
-    func getTaskData() async throws -> [TaskItem] {
-        let (data, response) = try await URLSession.shared.data(from: taskURL)
+    func fetchTaskData() async throws -> [TaskItem] {
+        var request = try await URLRequest(url: taskURL)
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("application/json", forHTTPHeaderField: "Accept")
         
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw HttpError.BadResponse
+        let (data, response) = try await URLSession.shared.data(for: request)
+        
+        let responseCode = (response as? HTTPURLResponse)?.statusCode
+        guard responseCode == 200 else {
+            switch responseCode {
+            case 400:
+                throw HttpError.BadRequest
+            case 401:
+                throw HttpError.UnauthorizedRequest
+            case 403:
+                throw HttpError.RequestForbidden
+            case 404:
+                throw HttpError.ResourceNotFound
+            case 500:
+                throw HttpError.InternalServerError
+            default:
+                throw HttpError.Unknown
+            }
         }
         
-        guard let taskData = try? JSONDecoder().decode([TaskItem].self, from: data) else {
-            throw HttpError.DecodingError
+//        guard let taskData = try? JSONDecoder().decode([TaskItem].self, from: data) else {
+//            throw DecoderError.DecodingError
+//        }
+        
+        var taskData: [TaskItem] = []
+        
+        do {
+            taskData = try JSONDecoder().decode([TaskItem].self, from: data)
+        } catch let error as DecodingError {
+            switch error {
+            case .dataCorrupted(let context):
+                print("Data corrupted: \(context.debugDescription)")
+            case .keyNotFound(let key, let context):
+                print("Key '\(key.stringValue)' not found: \(context.debugDescription)")
+            case .typeMismatch(let type, let context):
+                print("Type mismatch for type '\(type)' in \(context.debugDescription)")
+            case .valueNotFound(let type, let context):
+                print("Value not found for type '\(type)' in \(context.debugDescription)")
+            @unknown default:
+                print("An unknown decoding error occurred")
+            }
+        } catch {
+            print("An unexpected error occurred \(error)")
         }
         
         return taskData
@@ -74,12 +115,14 @@ class HttpClient {
         var request = try await URLRequest(url: getTaskUrl())
         request.httpMethod = HttpMethod.POST.rawValue
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("application/json", forHTTPHeaderField: "Accept")
+        
         request.httpBody = try? JSONEncoder().encode(object)
         
         let (_, response) = try await URLSession.shared.data(for: request)
         
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw HttpError.BadResponse
+            throw HttpError.BadRequest
         }
     }
     
@@ -93,33 +136,35 @@ class HttpClient {
         let (_, response) = try await URLSession.shared.data(for: request)
         
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw HttpError.BadResponse
+            throw HttpError.BadRequest
         }
     }
     
     // POST, PUT and PATCH TaskItem
     func sendTaskData(object: TaskItem, httpMethod: HttpMethod) async throws {
-        var request = try await URLRequest(url: getTaskUrl())
+        var request = try await URLRequest(url: taskURL)
         request.httpMethod = httpMethod.rawValue
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("application/json", forHTTPHeaderField: "Accept")
+        
         request.httpBody = try? JSONEncoder().encode(object)
         
         let (_, response) = try await URLSession.shared.data(for: request)
         
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw HttpError.BadResponse
+            throw HttpError.BadRequest
         }
     }
     
     // DELETE
     func deleteTaskData(at id: String) async throws {
-        var request = try await URLRequest(url: getTaskUrl())
+        var request = try await URLRequest(url: taskURL)
         request.httpMethod = HttpMethod.DELETE.rawValue
 
         let (_, response) = try await URLSession.shared.data(for: request)
         
         guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw HttpError.BadResponse
+            throw HttpError.BadRequest
         }
     }
 }

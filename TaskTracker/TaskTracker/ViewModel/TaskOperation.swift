@@ -8,7 +8,7 @@ import Foundation
 import Combine
 
 final class TaskManager {
-    func fetchAllTasks() -> [TaskItem] {
+    func fetchAllTasks() async -> [TaskItem] {
         [
             TaskItem(title: "Task 1", description: "Start your first project Task Trakcer to track daily tasks", category: "Personal", priority: "High", status: "Not Started", taskDate: TaskDate(startDate: "", dueDate: DateUtils.dateToString(Date()), finishDate: "")),
             TaskItem(title: "Task 5", description: "", category: "Work", priority: "High", status: "Not Started", taskDate: TaskDate(startDate: "", dueDate: DateUtils.dateToString(Date()), finishDate: "")),
@@ -34,8 +34,20 @@ final class TaskMainViewModel: ObservableObject {
     let taskManager = TaskManager()
     private var cancellables = Set<AnyCancellable>()
     
-    func loadTasks() {
-        allTasks = taskManager.fetchAllTasks()
+    func loadTasks() async throws {
+//        allTasks = taskManager.fetchAllTasks()
+        Task {
+            do {
+                let tasks = try await HttpClient.shared.fetchTaskData()
+                
+                // Switch to main thread for UI updates
+                DispatchQueue.main.async {
+                    self.allTasks = tasks
+                }
+            } catch {
+                print("Error in fetching task data")
+            }
+        }
     }
     
     
@@ -47,7 +59,24 @@ final class TaskMainViewModel: ObservableObject {
     }
     
     init() {
-        loadTasks()
+        Task {
+            do {
+                try await loadTasks()
+            } catch HttpError.BadRequest {
+                print("Bad request due to client error, may be bad URL")
+            } catch HttpError.UnauthorizedRequest {
+                print("Invalid authentication credentials")
+            } catch HttpError.RequestForbidden {
+                print("The server understood the request but refuses to authorize it")
+            } catch HttpError.ResourceNotFound {
+                print("The requested resource could not be found on the server")
+            } catch HttpError.InternalServerError {
+                print("An unexpected condition was encountered on the server")
+            } catch {
+                print("Error loading tasks: \(error)")
+            }
+        }
+        
         addSubscribers()
     }
     
