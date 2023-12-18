@@ -23,10 +23,6 @@ enum HttpError: Error {
     case Unknown // HTTP status code unknown
 }
 
-enum DecoderError: Error {
-    case DecodingError //
-}
-
 func taskUrl() async throws -> URL {
     guard let url = URL(string: "https://tasktracker.apiblueprint.org/v1/tasks") else {
         throw HttpError.BadRequest
@@ -44,16 +40,49 @@ class HttpClient {
             guard let url = URL(string: "https://private-96be530-tasktracker1.apiary-mock.com/v1/tasks") else {
                 throw HttpError.BadRequest
             }
+            
             return url
         }
     }
     
     func getTaskUrl() async throws -> URL {
-        guard let url = URL(string: "https://tasktracker.apiblueprint.org/v1/tasks") else {
+        guard let url = URL(string: "https://private-96be530-tasktracker1.apiary-mock.com/v1/tasks") else {
             throw HttpError.BadRequest
         }
         
         return url
+    }
+    
+    func handleHttpError(errorCode: Int?) async throws {
+        switch errorCode {
+        case 400:
+            throw HttpError.BadRequest
+        case 401:
+            throw HttpError.UnauthorizedRequest
+        case 403:
+            throw HttpError.RequestForbidden
+        case 404:
+            throw HttpError.ResourceNotFound
+        case 500:
+            throw HttpError.InternalServerError
+        default:
+            throw HttpError.Unknown
+        }
+    }
+    
+    func handleJSONDecodingError(_ error: DecodingError) {
+        switch error {
+        case .dataCorrupted(let context):
+            print("Data corrupted: \(context.debugDescription)")
+        case .keyNotFound(let key, let context):
+            print("Key '\(key.stringValue)' not found in \(context.debugDescription)")
+        case .typeMismatch(let type, let context):
+            print("Type mismatch for type '\(type)' in \(context.debugDescription)")
+        case .valueNotFound(let type, let context):
+            print("Value not found for type '\(type)' in \(context.debugDescription)")
+        @unknown default:
+            print("An unknown decoding error occurred")
+        }
     }
     
     // GET
@@ -65,44 +94,15 @@ class HttpClient {
         let (data, response) = try await URLSession.shared.data(for: request)
         
         let responseCode = (response as? HTTPURLResponse)?.statusCode
-        guard responseCode == 200 else {
-            switch responseCode {
-            case 400:
-                throw HttpError.BadRequest
-            case 401:
-                throw HttpError.UnauthorizedRequest
-            case 403:
-                throw HttpError.RequestForbidden
-            case 404:
-                throw HttpError.ResourceNotFound
-            case 500:
-                throw HttpError.InternalServerError
-            default:
-                throw HttpError.Unknown
-            }
+        if responseCode != 200 {
+            try await handleHttpError(errorCode: responseCode)
         }
-        
-//        guard let taskData = try? JSONDecoder().decode([TaskItem].self, from: data) else {
-//            throw DecoderError.DecodingError
-//        }
-        
+
         var taskData: [TaskItem] = []
-        
         do {
             taskData = try JSONDecoder().decode([TaskItem].self, from: data)
         } catch let error as DecodingError {
-            switch error {
-            case .dataCorrupted(let context):
-                print("Data corrupted: \(context.debugDescription)")
-            case .keyNotFound(let key, let context):
-                print("Key '\(key.stringValue)' not found: \(context.debugDescription)")
-            case .typeMismatch(let type, let context):
-                print("Type mismatch for type '\(type)' in \(context.debugDescription)")
-            case .valueNotFound(let type, let context):
-                print("Value not found for type '\(type)' in \(context.debugDescription)")
-            @unknown default:
-                print("An unknown decoding error occurred")
-            }
+            handleJSONDecodingError(error)
         } catch {
             print("An unexpected error occurred \(error)")
         }
@@ -151,8 +151,9 @@ class HttpClient {
         
         let (_, response) = try await URLSession.shared.data(for: request)
         
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw HttpError.BadRequest
+        let responseCode = (response as? HTTPURLResponse)?.statusCode
+        if responseCode != 200 {
+            try await handleHttpError(errorCode: responseCode)
         }
     }
     
@@ -163,8 +164,9 @@ class HttpClient {
 
         let (_, response) = try await URLSession.shared.data(for: request)
         
-        guard (response as? HTTPURLResponse)?.statusCode == 200 else {
-            throw HttpError.BadRequest
+        let responseCode = (response as? HTTPURLResponse)?.statusCode
+        if responseCode != 200 {
+            try await handleHttpError(errorCode: responseCode)
         }
     }
 }
