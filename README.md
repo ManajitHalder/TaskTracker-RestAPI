@@ -21,3 +21,7 @@ Features:
 9. User Authentication
 10. Searching a Task
 11. Settings Page
+
+
+# Created Swagger file at https://app.apiary.io/tasktracker1/editor
+Swagger file content is at swagger/swagger.txt in current folder
