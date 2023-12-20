@@ -251,10 +251,19 @@ struct TaskMainView: View {
     
     // Delete task at swipe from right to left.
     func deleteTask(at offset: IndexSet) {
+        offset.forEach { i in
+            let taskID = taskMainViewModel.allTasks[i].id
+            // Delete the task from the database
+            taskMainViewModel.deleteTask(with: taskID)
+        }
+
+        // Remove task from the front end
         taskMainViewModel.allTasks.remove(atOffsets: offset)
         
         // Update the picker style based upon the count of all tasks in the task list
         taskMainViewModel.useSegmentedPickerStyle = categories.count > 6 ? false : true
+        
+
     }
 }
 

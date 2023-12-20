@@ -81,14 +81,12 @@ final class TaskMainViewModel: ObservableObject {
     }
     
     private func addSubscribers() {
-//        Task {
-            $searchText
-                .debounce(for: 0.5, scheduler: DispatchQueue.main)
-                .sink { [weak self] searchText in
-                    self?.filterTasks(searchText: searchText)
-                }
-                .store(in: &cancellables)
-//        }
+        $searchText
+            .debounce(for: 0.5, scheduler: DispatchQueue.main)
+            .sink { [weak self] searchText in
+                self?.filterTasks(searchText: searchText)
+            }
+            .store(in: &cancellables)
     }
     
     private func filterTasks(searchText: String) {
@@ -111,11 +109,21 @@ final class TaskMainViewModel: ObservableObject {
     
     //MARK: - TASK OPERATIONS
     
+//    func addTask(_ task: TaskItem) {
+//        DispatchQueue.main.async { [weak self] in
+//            guard let self = self else { return }
+//
+//            self.allTasks.insert(task, at: 0)
+//        }
+//    }
+    
     func addTask(_ task: TaskItem) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-            
-            self.allTasks.insert(task, at: 0)
+        Task {
+            do {
+               try await HttpClient.shared.sendTaskData(object: task, httpMethod: HttpMethod.POST)
+            } catch {
+                print("Error in adding new task with error code \(error)")
+            }
         }
     }
     
@@ -135,13 +143,23 @@ final class TaskMainViewModel: ObservableObject {
         }
     }
     
-    func deleteTask(_ task: TaskItem) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else {
-                return
-            }
-            if let taskIndex = allTasks.firstIndex(where: { $0.id == task.id }) {
-                self.allTasks.remove(at: taskIndex)
+//    func deleteTask(_ task: TaskItem) {
+//        DispatchQueue.main.async { [weak self] in
+//            guard let self = self else {
+//                return
+//            }
+//            if let taskIndex = allTasks.firstIndex(where: { $0.id == task.id }) {
+//                self.allTasks.remove(at: taskIndex)
+//            }
+//        }
+//    }
+  
+    func deleteTask(with id: String) {
+        Task {
+            do {
+                try await HttpClient.shared.deleteTaskData(with: id)
+            } catch {
+                print("Error in deleting task with error code \(error)")
             }
         }
     }
@@ -175,7 +193,7 @@ final class TaskMainViewModel: ObservableObject {
                 allTasks[taskIndex].status = status
                 allTasks[taskIndex].taskDate.finishDate = DateUtils.dateToString(finishDate)
                 self.addCompletedTask(allTasks[taskIndex]) // Add the task to the completed task list
-                self.deleteTask(allTasks[taskIndex]) // Delete the task from the allTasks list
+                self.deleteTask(with: allTasks[taskIndex].id) // Delete the task from the allTasks list
             }
         }
     }

@@ -66,6 +66,7 @@ class HttpClient {
         case 500:
             throw HttpError.InternalServerError
         default:
+            print("errorCode: \(String(describing: errorCode))")
             throw HttpError.Unknown
         }
     }
@@ -152,20 +153,25 @@ class HttpClient {
         let (_, response) = try await URLSession.shared.data(for: request)
         
         let responseCode = (response as? HTTPURLResponse)?.statusCode
-        if responseCode != 200 {
+        if !(200...299).contains(responseCode!) {
             try await handleHttpError(errorCode: responseCode)
         }
     }
     
     // DELETE
-    func deleteTaskData(at id: String) async throws {
-        var request = try await URLRequest(url: taskURL)
+    func deleteTaskData(with taskID: String) async throws {
+//        let url1 = try await taskURL.appendingPathComponent("\(taskID)")
+        var request = try await URLRequest(url: taskURL.appendingPathComponent("\(taskID)"))
+//        var request = URLRequest(url: url1)
         request.httpMethod = HttpMethod.DELETE.rawValue
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue("application/json", forHTTPHeaderField: "Accept")
 
         let (_, response) = try await URLSession.shared.data(for: request)
         
         let responseCode = (response as? HTTPURLResponse)?.statusCode
-        if responseCode != 200 {
+        // 204: “No Content.” Means that the server has successfully processed the request, but is not going to return any content
+        if !(200...299).contains(responseCode!){
             try await handleHttpError(errorCode: responseCode)
         }
     }

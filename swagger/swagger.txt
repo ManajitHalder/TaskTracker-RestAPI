@@ -92,18 +92,32 @@ paths:
         You may create your own task. It takes a JSON object containing a 
         task details.
       summary: Create a new task
+      consumes:
+        - application/json
+      produces:
+        - application/json
       parameters:
         - name: task
           in: body
+          description: "A new Task"
           required: true
           schema:
             $ref: '#/definitions/TaskItem'
       responses:
         201:
-          description: Task created
+          description: Task created successfully
           schema:
             $ref: '#/definitions/TaskItem'
-            
+          
+        400:
+          description: Bad request
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Error message
+                
           examples:
             application/json:
               - id: "5"
@@ -117,7 +131,31 @@ paths:
                   dueDate: "18 Dec 2023"
                   finishDate: ""
                 updates: []
-                
+    
+  /tasks/{taskId}:
+    delete:
+      summary: delete a task by taskID
+      parameters:
+        - in: path
+          name: taskId
+          type: string
+          format: uuid
+          required: true
+          description: "Unique identifier of the task to be deleted"
+          
+      responses:
+        204:
+          description:
+            Task deleted successfully
+        404:
+          description: Task not found
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Error message
+        
 definitions:
   Updates:
     title: Updates
