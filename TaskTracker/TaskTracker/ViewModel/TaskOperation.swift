@@ -124,25 +124,48 @@ final class TaskMainViewModel: ObservableObject {
             } catch {
                 print("Error in adding new task with error code \(error)")
             }
-        }
-    }
-    
-    func updateTask(_ task: TaskItem) {
-        DispatchQueue.main.async { [weak self] in
-            guard let self = self else { return }
-
-            if let taskIndex = allTasks.firstIndex(where: { $0.id == task.id }) {
-                allTasks[taskIndex].title = task.title
-                allTasks[taskIndex].description = task.description
-                allTasks[taskIndex].category = task.category
-                allTasks[taskIndex].priority = task.priority
-                allTasks[taskIndex].status = task.status
-                allTasks[taskIndex].taskDate.dueDate = task.taskDate.dueDate
-                allTasks[taskIndex].updates = task.updates
+            
+            do {
+                try await loadTasks()
+            } catch {
+                print("Error in fetching tasks \(error)")
             }
         }
     }
     
+    func updateTask(_ task: TaskItem) {
+        Task {
+            do {
+                try await HttpClient.shared.sendTaskData(object: task, httpMethod: HttpMethod.PUT)
+            } catch {
+                print("Error in adding new task with error code \(error)")
+            }
+            
+            do {
+                try await loadTasks()
+            } catch {
+                print("Error in fetching tasks \(error)")
+            }
+        }
+    }
+    
+    
+//    func updateTask(_ task: TaskItem) {
+//        DispatchQueue.main.async { [weak self] in
+//            guard let self = self else { return }
+//
+//            if let taskIndex = allTasks.firstIndex(where: { $0.id == task.id }) {
+//                allTasks[taskIndex].title = task.title
+//                allTasks[taskIndex].description = task.description
+//                allTasks[taskIndex].category = task.category
+//                allTasks[taskIndex].priority = task.priority
+//                allTasks[taskIndex].status = task.status
+//                allTasks[taskIndex].taskDate.dueDate = task.taskDate.dueDate
+//                allTasks[taskIndex].updates = task.updates
+//            }
+//        }
+//    }
+//
 //    func deleteTask(_ task: TaskItem) {
 //        DispatchQueue.main.async { [weak self] in
 //            guard let self = self else {

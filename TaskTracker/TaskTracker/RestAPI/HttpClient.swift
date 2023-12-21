@@ -143,7 +143,12 @@ class HttpClient {
     
     // POST, PUT and PATCH TaskItem
     func sendTaskData(object: TaskItem, httpMethod: HttpMethod) async throws {
-        var request = try await URLRequest(url: taskURL)
+        var request: URLRequest
+        if httpMethod.rawValue == "POST" {
+            request = try await URLRequest(url: taskURL)
+        } else { // for PUT and PATCH
+            request = try await URLRequest(url: taskURL.appendingPathComponent("\(object.id)"))
+        }
         request.httpMethod = httpMethod.rawValue
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
         request.addValue("application/json", forHTTPHeaderField: "Accept")

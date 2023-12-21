@@ -155,6 +155,35 @@ paths:
               message:
                 type: string
                 description: Error message
+                
+
+    put:
+      summary: Update a task by ID
+      parameters:
+        - in: path
+          name: taskId
+          type: string
+          format: uuid
+          required: true
+          description: "Unique identifier of the task to be updated"
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      
+      responses:
+        200:
+          description: Task updated successfully
+          schema:
+            $ref: '#/definitions/TaskItem'
+        400:
+          description: Bad request
+          schema:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Error message
         
 definitions:
   Updates:
